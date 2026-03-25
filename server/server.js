@@ -506,12 +506,38 @@ app.get('/api/collab/messages', async (req, res) => {
   }
 });
 
+// WebSocket 心跳检测配置
+const HEARTBEAT_INTERVAL = 30000; // 30秒
+const HEARTBEAT_TIMEOUT = 35000;  // 35秒超时
+
 // WebSocket
 const wss = new WebSocket.Server({ port: 3101 });
 
 wss.on('connection', async (ws) => {
   console.log('新的 WebSocket 连接');
   clients.add(ws);
+
+  // 心跳检测
+  ws.isAlive = true;
+  ws.lastPong = Date.now();
+  
+  const heartbeatInterval = setInterval(() => {
+    if (Date.now() - ws.lastPong > HEARTBEAT_TIMEOUT) {
+      console.log('💔 WebSocket 心跳超时，关闭连接');
+      clearInterval(heartbeatInterval);
+      clients.delete(ws);
+      return ws.terminate();
+    }
+    
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.ping();
+    }
+  }, HEARTBEAT_INTERVAL);
+  
+  ws.on('pong', () => {
+    ws.isAlive = true;
+    ws.lastPong = Date.now();
+  });
 
   const messages = await readMessages();
   const tasks = await readTaskQueue();
@@ -522,7 +548,10 @@ wss.on('connection', async (ws) => {
     tasks: tasks.filter(t => t.status === 'pending')
   }));
   
-  ws.on('close', () => clients.delete(ws));
+  ws.on('close', () => {
+    clearInterval(heartbeatInterval);
+    clients.delete(ws);
+  });
 });
 
 // 增强版消息推送 - 修复推送逻辑

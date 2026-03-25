@@ -803,6 +803,16 @@ function watchAgentSessions() {
                             await handleNewAgentMessage(agent, toolMsg, 'tool');
                           }
                         }
+                      } else if (msg.role === 'toolResult') {
+                        // 处理工具返回结果
+                        const toolName = msg.toolName || 'unknown';
+                        const isError = msg.isError || false;
+                        const resultContent = extractToolResultContent(msg);
+                        
+                        if (resultContent) {
+                          const resultMsg = formatToolResult(toolName, resultContent, isError);
+                          await handleNewAgentMessage(agent, resultMsg, isError ? 'error' : 'result');
+                        }
                       }
                     }
                   } catch (parseError) {
@@ -897,6 +907,61 @@ function formatToolCall(tool) {
       return `🌐 浏览器操作: ${args.action || 'unknown'}`;
     default:
       return `🔧 工具调用: ${toolName}`;
+  }
+}
+
+// 提取工具返回结果内容
+function extractToolResultContent(msg) {
+  if (!msg.content) return null;
+  
+  // 如果是数组
+  if (Array.isArray(msg.content)) {
+    for (const block of msg.content) {
+      if (block.type === 'text' && block.text) {
+        return block.text;
+      }
+    }
+  }
+  
+  // 如果是字符串
+  if (typeof msg.content === 'string') {
+    return msg.content;
+  }
+  
+  // 如果有 details
+  if (msg.details) {
+    return JSON.stringify(msg.details, null, 2);
+  }
+  
+  return null;
+}
+
+// 格式化工具返回结果
+function formatToolResult(toolName, content, isError) {
+  const maxLength = 100;
+  const truncated = content.length > maxLength 
+    ? content.substring(0, maxLength) + '...' 
+    : content;
+  
+  const icon = isError ? '❌' : '✅';
+  const status = isError ? '失败' : '成功';
+  
+  // 根据工具类型生成不同提示
+  switch (toolName) {
+    case 'read':
+      return `${icon} 读取完成 (${truncated.split('\n').length} 行)`;
+    case 'write':
+      return `${icon} 写入完成`;
+    case 'edit':
+      return `${icon} 编辑完成`;
+    case 'exec':
+      return `${icon} 执行${status}: ${truncated}`;
+    case 'web_search':
+      return `${icon} 搜索完成`;
+    case 'web_fetch':
+      return `${icon} 抓取完成`;
+    default:
+      return `${icon} ${toolName} ${status}`;
   }
 }
 

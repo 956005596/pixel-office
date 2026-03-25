@@ -1948,22 +1948,47 @@
             messagesData.slice(-20).forEach((msg, index) => {
                 const agentId = msg.agentId || 'main';
                 const mapping = AGENT_MAPPING[agentId] || AGENT_MAPPING['main'];
+                const msgType = msg.type || 'text';
                 
                 const msgDiv = document.createElement('div');
-                msgDiv.style.cssText = 'margin-bottom: 6px;';
+                msgDiv.style.cssText = 'margin-bottom: 8px;';
                 
                 const time = msg.time || new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
                 
+                // 根据消息类型设置样式
+                let bgStyle = '';
+                let borderStyle = '';
+                let typeIcon = '';
+                
+                switch (msgType) {
+                    case 'tool':
+                        bgStyle = 'background: rgba(99, 102, 241, 0.1);';
+                        borderStyle = 'border-left: 3px solid #6366f1;';
+                        typeIcon = '🔧 ';
+                        break;
+                    case 'thinking':
+                        bgStyle = 'background: rgba(139, 92, 246, 0.1);';
+                        borderStyle = 'border-left: 3px solid #8b5cf6;';
+                        typeIcon = '💭 ';
+                        break;
+                    default:
+                        bgStyle = 'background: transparent;';
+                        borderStyle = 'border-left: 3px solid transparent;';
+                        typeIcon = '';
+                }
+                
                 msgDiv.innerHTML = `
-                    <span style="color: ${mapping.color};">${mapping.icon} ${mapping.name}:</span>
-                    <span style="color: #a0aec0; font-size: 10px; margin-left: 8px;">${time}</span>
-                    <div style="color: #e2e8f0; margin-left: 20px; margin-top: 2px;">${msg.text || ''}</div>
+                    <div style="${bgStyle} ${borderStyle} padding: 6px 8px; border-radius: 4px;">
+                        <span style="color: ${mapping.color}; font-weight: 500;">${mapping.icon} ${mapping.name}:</span>
+                        <span style="color: #718096; font-size: 10px; margin-left: 8px;">${time}</span>
+                        <div style="color: #e2e8f0; margin-left: 20px; margin-top: 4px; font-size: 12px;">${typeIcon}${msg.text || ''}</div>
+                    </div>
                 `;
                 
                 chatMessages.appendChild(msgDiv);
                 
-                // 让对应的Agent显示气泡（只显示最新的3条）
-                if (index >= messagesData.slice(-20).length - 3) {
+                // 让对应的Agent显示气泡（只显示最新的3条文本消息）
+                if (msgType === 'text' && index >= messagesData.slice(-20).length - 3) {
                     const agent = agents.find(a => a.realId === agentId);
                     if (agent && msg.text) {
                         agent.speak(msg.text.substring(0, 30) + (msg.text.length > 30 ? '...' : ''));

@@ -769,15 +769,23 @@ function watchAgentSessions() {
                       if (msg.role === 'assistant' && msg.content) {
                         // 提取文本内容
                         let textContent = '';
+                        let toolCalls = [];
                         
                         if (Array.isArray(msg.content)) {
-                          // content 是数组，提取文本
+                          // content 是数组，提取文本和工具调用
                           for (const block of msg.content) {
                             if (block.type === 'text' && block.text) {
                               textContent += block.text;
                             } else if (block.type === 'thinking' && block.thinking) {
                               // 可选：也包含思考内容
                               textContent += block.thinking;
+                            } else if (block.type === 'toolCall' && block.name) {
+                              // 提取工具调用
+                              toolCalls.push({
+                                name: block.name,
+                                id: block.id,
+                                arguments: block.arguments || {}
+                              });
                             }
                           }
                         } else if (typeof msg.content === 'string') {
@@ -785,7 +793,15 @@ function watchAgentSessions() {
                         }
                         
                         if (textContent.trim()) {
-                          await handleNewAgentMessage(agent, textContent.trim());
+                          await handleNewAgentMessage(agent, textContent.trim(), 'text');
+                        }
+                        
+                        // 处理工具调用
+                        if (toolCalls.length > 0) {
+                          for (const tool of toolCalls) {
+                            const toolMsg = formatToolCall(tool);
+                            await handleNewAgentMessage(agent, toolMsg, 'tool');
+                          }
                         }
                       }
                     }
@@ -822,7 +838,7 @@ function watchAgentSessions() {
 }
 
 // 处理新消息推送 - 修复逻辑
-async function handleNewAgentMessage(agent, content) {
+async function handleNewAgentMessage(agent, content, type = 'text') {
   try {
     // 检查是否最近5分钟内已有相同内容的消息（避免重复）
     const messages = await readMessages();
@@ -840,6 +856,7 @@ async function handleNewAgentMessage(agent, content) {
         text: content,
         own: false,
         agentId: agent.id,
+        type: type, // 'text' | 'tool' | 'thinking'
         time: new Date().toLocaleTimeString('zh-CN', { 
           hour: '2-digit', 
           minute: '2-digit', 
@@ -848,10 +865,38 @@ async function handleNewAgentMessage(agent, content) {
       });
 
       broadcast({ type: 'message', ...agentMessage });
-      console.log(`📨 ${agent.name} 回复已推送: ${content.substring(0, 50)}...`);
+      
+      const typeEmoji = type === 'tool' ? '🔧' : type === 'thinking' ? '💭' : '📨';
+      console.log(`${typeEmoji} ${agent.name}: ${content.substring(0, 50)}...`);
     }
   } catch (error) {
     console.error(`处理 ${agent.name} 消息失败:`, error);
+  }
+}
+
+// 格式化工具调用信息
+function formatToolCall(tool) {
+  const toolName = tool.name || 'unknown';
+  const args = tool.arguments || {};
+  
+  // 根据工具类型生成友好提示
+  switch (toolName) {
+    case 'read':
+      return `📖 读取文件: ${args.path || args.file_path || 'unknown'}`;
+    case 'write':
+      return `✏️ 写入文件: ${args.path || args.file_path || 'unknown'}`;
+    case 'edit':
+      return `✂️ 编辑文件: ${args.path || args.file_path || 'unknown'}`;
+    case 'exec':
+      return `⚡ 执行命令: ${(args.command || '').substring(0, 50)}`;
+    case 'web_search':
+      return `🔍 搜索: ${args.query || 'unknown'}`;
+    case 'web_fetch':
+      return `🌐 访问: ${args.url || 'unknown'}`;
+    case 'browser':
+      return `🌐 浏览器操作: ${args.action || 'unknown'}`;
+    default:
+      return `🔧 工具调用: ${toolName}`;
   }
 }
 

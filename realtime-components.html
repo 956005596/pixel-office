@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时更新组件库 - 调研 Demo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            padding: 40px;
+            line-height: 1.6;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { font-size: 2em; margin-bottom: 10px; }
+        .subtitle { color: #888; margin-bottom: 40px; }
+        
+        section {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid #2a2a2a;
+        }
+        
+        h2 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-desc {
+            color: #888;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+        }
+        
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .demo-card {
+            background: #252525;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #2a2a2a;
+        }
+        
+        .demo-title {
+            font-weight: 500;
+            margin-bottom: 15px;
+            color: #667eea;
+            font-size: 0.95em;
+        }
+        
+        /* ========== 1. 状态指示器 ========== */
+        
+        /* 方案 A: 圆点 + 脉冲动画 */
+        .status-dot {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            position: relative;
+        }
+        
+        .dot.idle {
+            background: #28a745;
+        }
+        
+        .dot.busy {
+            background: #ffc107;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .dot.offline {
+            background: #6c757d;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);
+            }
+        }
+        
+        /* 方案 B: 环形进度 */
+        .status-ring {
+            width: 40px;
+            height: 40px;
+            position: relative;
+        }
+        
+        .ring-svg {
+            transform: rotate(-90deg);
+        }
+        
+        .ring-bg {
+            fill: none;
+            stroke: #2a2a2a;
+            stroke-width: 3;
+        }
+        
+        .ring-progress {
+            fill: none;
+            stroke-width: 3;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease;
+        }
+        
+        .ring-progress.idle { stroke: #28a745; }
+        .ring-progress.busy { stroke: #ffc107; }
+        .ring-progress.offline { stroke: #6c757d; }
+        
+        .ring-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.8em;
+        }
+        
+        /* 方案 C: 条形指示器 */
+        .status-bar {
+            width: 100px;
+            height: 4px;
+            background: #2a2a2a;
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .bar-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+        
+        .bar-fill.idle {
+            background: #28a745;
+            width: 100%;
+        }
+        
+        .bar-fill.busy {
+            background: linear-gradient(90deg, #ffc107, #ff8c00);
+            width: 60%;
+            animation: barSlide 2s ease-in-out infinite;
+        }
+        
+        .bar-fill.offline {
+            background: #6c757d;
+            width: 20%;
+        }
+        
+        @keyframes barSlide {
+            0% { width: 30%; }
+            50% { width: 80%; }
+            100% { width: 30%; }
+        }
+        
+        /* 方案 D: 图标 + 发光 */
+        .status-glow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #1a1a1a;
+            border-radius: 20px;
+            position: relative;
+        }
+        
+        .glow-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .glow-dot.idle {
+            background: #28a745;
+            box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
+        }
+        
+        .glow-dot.busy {
+            background: #ffc107;
+            animation: glowPulse 2s ease-in-out infinite;
+        }
+        
+        .glow-dot.offline {
+            background: #6c757d;
+        }
+        
+        @keyframes glowPulse {
+            0%, 100% {
+                box-shadow: 0 0 5px rgba(255, 193, 7, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 20px rgba(255, 193, 7, 0.8), 0 0 30px rgba(255, 193, 7, 0.4);
+            }
+        }
+        
+        /* ========== 2. 聊天记录展示 ========== */
+        
+        .chat-demo {
+            height: 300px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* 方案 A: 滚动加载 */
+        .chat-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            background: #1a1a1a;
+            border-radius: 8px;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+        
+        .message-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9em;
+        }
+        
+        .message-sender {
+            font-weight: 500;
+            font-size: 0.85em;
+        }
+        
+        .message-time {
+            font-size: 0.75em;
+            color: #666;
+        }
+        
+        .message-bubble {
+            padding: 10px 14px;
+            background: #252525;
+            border-radius: 12px;
+            margin-left: 36px;
+            position: relative;
+        }
+        
+        .message-bubble::before {
+            content: '';
+            position: absolute;
+            left: -6px;
+            top: 0;
+            width: 0;
+            height: 0;
+            border-right: 6px solid #252525;
+            border-top: 6px solid transparent;
+        }
+        
+        .message.own .message-bubble {
+            background: #2a3a5a;
+            margin-left: 0;
+            margin-right: 36px;
+        }
+        
+        .message.own .message-bubble::before {
+            left: auto;
+            right: -6px;
+            border-right: none;
+            border-left: 6px solid #2a3a5a;
+        }
+        
+        .load-more {
+            text-align: center;
+            padding: 10px;
+            color: #667eea;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+        
+        .load-more:hover {
+            text-decoration: underline;
+        }
+        
+        /* 方案 B: 分页 */
+        .chat-paged {
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .page-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .page-btn {
+            padding: 6px 12px;
+            background: #252525;
+            border: 1px solid #3a3a3a;
+            border-radius: 4px;
+            color: #e0e0e0;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+        
+        .page-btn:hover:not(:disabled) {
+            background: #667eea;
+        }
+        
+        .page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .page-info {
+            color: #888;
+            font-size: 0.85em;
+            display: flex;
+            align-items: center;
+        }
+        
+        /* 时间戳样式 */
+        .timestamp-absolute {
+            font-size: 0.75em;
+            color: #888;
+        }
+        
+        .timestamp-relative {
+            font-size: 0.75em;
+            color: #667eea;
+        }
+        
+        /* ========== 3. 资源监控可视化 ========== */
+        
+        /* 方案 A: 线性进度条 */
+        .resource-linear {
+            margin-bottom: 15px;
+        }
+        
+        .resource-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.85em;
+        }
+        
+        .resource-name {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .resource-value {
+            color: #888;
+        }
+        
+        .linear-bar {
+            height: 8px;
+            background: #2a2a2a;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .linear-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+            position: relative;
+        }
+        
+        .linear-fill.low { background: linear-gradient(90deg, #28a745, #20c997); }
+        .linear-fill.medium { background: linear-gradient(90deg, #ffc107, #fd7e14); }
+        .linear-fill.high { background: linear-gradient(90deg, #dc3545, #c82333); }
+        
+        .linear-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        /* 方案 B: 环形图 */
+        .resource-ring {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .ring-item {
+            text-align: center;
+        }
+        
+        .ring-large {
+            width: 80px;
+            height: 80px;
+            position: relative;
+            margin: 0 auto 10px;
+        }
+        
+        .ring-large svg {
+            transform: rotate(-90deg);
+        }
+        
+        .ring-large-bg {
+            fill: none;
+            stroke: #2a2a2a;
+            stroke-width: 6;
+        }
+        
+        .ring-large-fill {
+            fill: none;
+            stroke-width: 6;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease;
+        }
+        
+        .ring-large-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        
+        .ring-label {
+            font-size: 0.85em;
+            color: #888;
+        }
+        
+        /* 方案 C: 迷你图表 */
+        .resource-sparkline {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .sparkline-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .sparkline-canvas {
+            width: 100%;
+            height: 40px;
+            background: #252525;
+            border-radius: 4px;
+        }
+        
+        /* 方案 D: 多维仪表盘 */
+        .dashboard-mini {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        
+        .metric-box {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .metric-label {
+            font-size: 0.75em;
+            color: #888;
+        }
+        
+        .metric-trend {
+            font-size: 0.75em;
+            margin-top: 5px;
+        }
+        
+        .metric-trend.up { color: #28a745; }
+        .metric-trend.down { color: #dc3545; }
+        
+        /* 实时更新指示器 */
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: #1a3a1a;
+            border-radius: 12px;
+            font-size: 0.75em;
+            color: #28a745;
+        }
+        
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            background: #28a745;
+            border-radius: 50%;
+            animation: livePulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes livePulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        /* 代码展示 */
+        .code-block {
+            background: #0f0f0f;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.85em;
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+        
+        .code-comment { color: #6a9955; }
+        .code-keyword { color: #569cd6; }
+        .code-string { color: #ce9178; }
+        
+        /* 推荐标签 */
+        .recommend-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #667eea;
+            color: white;
+            border-radius: 4px;
+            font-size: 0.7em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 实时更新组件库</h1>
+        <p class="subtitle">多 Agent 协作 UI - 前端实现方案调研</p>
+        
+        <!-- ========== 1. 状态指示器 ========== -->
+        <section>
+            <h2>📍 1. 状态指示器设计</h2>
+            <p class="section-desc">
+                用于显示 Agent 的闲忙状态，支持多种视觉效果
+            </p>
+            
+            <div class="demo-grid">
+                <!-- 方案 A -->
+                <div class="demo-card">
+                    <div class="demo-title">方案 A: 脉冲圆点 <span class="recommend-badge">推荐</span></div>
+                    <div style="display: flex; flex-direction: column; gap: 15px;">
+                        <div class="status-dot">
+                            <div class="dot idle"></div>
+                            <span>空闲</span>
+                        </div>
+                        <div class="status-dot">
+                            <div class="dot busy"></div>
+                            <span>忙碌</span>
+                        </div>
+                        <div class="status-dot">
+                            <div class="dot offline"></div>
+                            <span>离线</span>
+                        </div>
+                    </div>
+                    <div class="code-block">
+<span class="code-comment">/* CSS 动画，性能优秀 */</span>
+<span class="code-keyword">@keyframes</span> pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,193,7,0.7); }
+  50% { box-shadow: 0 0 0 10px rgba(255,193,7,0); }
+}
+                    </div>
+                </div>
+                
+                <!-- 方案 B -->
+                <div class="demo-card">
+                    <div class="demo-title">方案 B: 环形进度</div>
+                    <div style="display: flex; gap: 20px;">
+                        <div class="status-ring">
+                            <svg class="ring-svg" width="40" height="40">
+                                <circle class="ring-bg" cx="20" cy="20" r="16"/>
+                                <circle class="ring-progress idle" cx="20" cy="20" r="16" 
+                                        stroke-dasharray="100.5" stroke-dashoffset="0"/>
+                            </svg>
+                            <div class="ring-center">✓</div>
+                        </div>
+                        <div class="status-ring">
+                            <svg class="ring-svg" width="40" height="40">
+                                <circle class="ring-bg" cx="20" cy="20" r="16"/>
+                                <circle class="ring-progress busy" cx="20" cy="20" r="16" 
+                                        stroke-dasharray="100.5" stroke-dashoffset="40"/>
+                            </svg>
+                            <div class="ring-center">60%</div>
+                        </div>
+                    </div>
+                    <div class="code-block">
+<span class="code-comment">// SVG 适合精确进度显示</span>
+<span class="code-keyword">const</span> offset = circumference - (progress / 100 * circumference);
+                    </div>
+                </div>
+                
+                <!-- 方案 C -->
+                <div class="demo-card">
+                    <div class="demo-title">方案 C: 条形指示器</div>
+                    <div style="display: flex; flex-direction: column; gap: 15px;">
+                        <div>
+                            <div style="font-size: 0.85em; margin-bottom: 5px;">空闲</div>
+                            <div class="status-bar"><div class="bar-fill idle"></div></div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85em; margin-bottom: 5px;">忙碌</div>
+                            <div class="status-bar"><div class="bar-fill busy"></div></div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85em; margin-bottom: 5px;">离线</div>
+                            <div class="status-bar"><div class="bar-fill offline"></div></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 方案 D -->
+                <div class="demo-card">
+                    <div class="demo-title">方案 D: 发光标签</div>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div class="status-glow">
+                            <div class="glow-dot idle"></div>
+                            <span>空闲</span>
+                        </div>
+                        <div class="status-glow">
+                            <div class="glow-dot busy"></div>
+                            <span>忙碌中...</span>
+                        </div>
+                        <div class="status-glow">
+                            <div class="glow-dot offline"></div>
+                            <span>离线</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px; padding: 15px; background: #2a2a4a; border-radius: 8px;">
+                <strong>💡 推荐方案：</strong>方案 A（脉冲圆点）
+                <ul style="margin-top: 10px; margin-left: 20px; color: #aaa;">
+                    <li>✅ 性能最优：纯 CSS 动画，GPU 加速</li>
+                    <li>✅ 视觉明显：脉冲效果吸引注意力</li>
+                    <li>✅ 代码简洁：无需 SVG 或复杂计算</li>
+                    <li>✅ 可扩展：易于添加更多状态</li>
+                </ul>
+            </div>
+        </section>
+        
+        <!-- ========== 2. 聊天记录展示 ========== -->
+        <section>
+            <h2>💬 2. 聊天记录展示</h2>
+            <p class="section-desc">
+                实时消息流展示，支持滚动加载和分页两种模式
+            </p>
+            
+            <div class="demo-grid">
+                <!-- 方案 A: 滚动加载 -->
+                <div class="demo-card">
+                    <div class="demo-title">方案 A: 滚动加载 <span class="recommend-badge">推荐</span></div>
+                    <div class="chat-demo">
+                        <div class="chat-scroll" id="chat-scroll">
+                            <div class="load-more" onclick="loadMoreMessages()">↑ 加载更多消息</div>
+                            <div class="message">
+                                <div class="message-header">
+                                    <div class="message-avatar">🐿️</div>
+                                    <span class="message-sender">小松</span>
+                                    <span class="message-time">10:30</span>
+                                </div>
+                                <div class="message-bubble">
+                                    任务已分配给工程师 💻
+                                </div>
+                            </div>
+                            <div class="message own">
+                                <div class="message-header">
+                                    <div class="message-avatar" style="margin-left: auto;">👤</div>
+                                    <span class="message-sender">你</span>
+                                    <span class="message-time">10:31</span>
+                                </div>
+                                <div class="message-bubble">
+                                    好的，预计多久完成？
+                                </div>
+                            </div>
+                            <div class="message">
+                                <div class="message-header">
+                                    <div class="message-avatar">💻</div>
+                                    <span class="message-sender">工程师</span>
+                                    <span class="timestamp-relative">刚刚</span>
+                                </div>
+                                <div class="message-bubble">
+                                    预计 2 小时完成 ✅
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="code-block">
+<span class="code-comment">// 滚动到底部，新消息自动出现</span>
+chatScroll.scrollTop = chatScroll.scrollHeight;
+                    </div>
+                </div>
+                
+                <!-- 方案 B: 分页 -->
+                <div class="demo-card">
+                    <div class="demo-title">方案 B: 分页加载</div>
+                    <div class="chat-demo">
+                        <div class="page-controls">
+                            <button class="page-btn" disabled>← 上一页</button>
+                            <span class="page-info">第 1/5 页</span>
+                            <button class="page-btn">下一页 →</button>
+                        </div>
+                        <div class="chat-scroll">
+                            <div class="message">
+                                <div class="message-header">
+                                    <div class="message-avatar">🔍</div>
+                                    <span class="message-sender">研究员</span>
+                                    <span class="message-time">昨天 15:20</span>
+                                </div>
+                                <div class="message-bubble">
+                                    调研报告已完成 📊
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 时间戳格式 -->
+            <div style="margin-top: 20px;">
+                <div class="demo-title">时间戳显示格式</div>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div>
+                        <div style="margin-bottom: 5px;">绝对时间：</div>
+                        <span class="timestamp-absolute">2024-03-24 10:30:45</span>
+                    </div>
+                    <div>
+                        <div style="margin-bottom: 5px;">相对时间：</div>
+                        <span class="timestamp-relative">刚刚</span>
+                    </div>
+                    <div>
+                        <div style="margin-bottom: 5px;">智能格式：</div>
+                        <span class="timestamp-absolute">今天 10:30</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px; padding: 15px; background: #2a2a4a; border-radius: 8px;">
+                <strong>💡 推荐方案：</strong>方案 A（滚动加载）+ 相对时间
+                <ul style="margin-top: 10px; margin-left: 20px; color: #aaa;">
+                    <li>✅ 用户体验流畅：无需手动翻页</li>
+                    <li>✅ 实时性强：新消息自动出现</li>
+                    <li>✅ 内存友好：可限制消息数量（如保留最近 100 条）</li>
+                    <li>✅ 时间友好：相对时间更易读（刚刚、5分钟前）</li>
+                </ul>
+            </div>
+        </section>
+        
+        <!-- ========== 3. 资源监控可视化 ========== -->
+        <section>
+            <h2>📊 3. 资源监控可视化</h2>
+            <p class="section-desc">
+                实时显示 CPU、内存、网络等资源使用情况
+            </p>
+            
+            <div class="demo-grid">
+                <!-- 方案 A: 线性进度条 -->
+                <div class="demo-card">
+                    <div class="demo-title">方案 A: 线性进度条 <span class="recommend-badge">推荐</span></div>
+                    <div class="resource-linear">
+                        <div class="resource-header">
+                            <div class="resource-name">
+                                <span>💻</span>
+                                <span>CPU</span>
+                            </div>
+                            <div class="resource-value">45%</div>
+                        </div>
+                        <div class="linear-bar">
+                            <div class="linear-fill medium" style="width: 45%"></div>
+                        </div>
+                    </div>
+                    <div class="resource-linear">
+                        <div class="resource-header">
+                            <div class="resource-name">
+                                <span>🧠</span>
+                                <span>内存</span>
+                            </div>
+                            <div class="resource-value">78%</div>
+                        </div>
+                        <div class="linear-bar">
+                            <div class="linear-fill high" style="width: 78%"></div>
+                        </div>
+                    </div>
+                    <div class="resource-linear">
+                        <div class="resource-header">
+                            <div class="resource-name">
+                                <span>📡</span>
+                                <span>网络</span>
+                            </div>
+                            <div class="resource-value">12%</div>
+                        </div>
+                        <div class="linear-bar">
+                            <div class="linear-fill low" style="width: 12%"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 方案 B: 环形图 -->
+                <div class="demo-card">
+                    <div class="demo-title">方案 B: 环形仪表盘</div>
+                    <div class="resource-ring">
+                        <div class="ring-item">
+                            <div class="ring-large">
+                                <svg width="80" height="80">
+                                    <circle class="ring-large-bg" cx="40" cy="40" r="32"/>
+                                    <circle class="ring-large-fill" cx="40" cy="40" r="32" 
+                                            stroke="#667eea"
+                                            stroke-dasharray="201" 
+                                            stroke-dashoffset="110"/>
+                                </svg>
+                                <div class="ring-large-text">45%</div>
+                            </div>
+                            <div class="ring-label">CPU</div>
+                        </div>
+                        <div class="ring-item">
+                            <div class="ring-large">
+                                <svg width="80" height="80">
+                                    <circle class="ring-large-bg" cx="40" cy="40" r="32"/>
+                                    <circle class="ring-large-fill" cx="40" cy="40" r="32" 
+                                            stroke="#28a745"
+                                            stroke-dasharray="201" 
+                                            stroke-dashoffset="44"/>
+                                </svg>
+                                <div class="ring-large-text">78%</div>
+                            </div>
+                            <div class="ring-label">内存</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 方案 C: 迷你图表 -->
+                <div class="demo-card">
+                    <div class="demo-title">方案 C: 迷你折线图</div>
+                    <div class="resource-sparkline">
+                        <div class="sparkline-header">
+                            <span>CPU 历史</span>
+                            <span class="live-indicator">
+                                <div class="live-dot"></div>
+                                实时
+                            </span>
+                        </div>
+                        <canvas class="sparkline-canvas" id="sparkline-cpu"></canvas>
+                    </div>
+                    <div class="code-block">
+<span class="code-comment">// Canvas 绘制，性能优秀</span>
+<span class="code-keyword">const</span> ctx = canvas.getContext(<span class="code-string">'2d'</span>);
+ctx.lineTo(x, y); ctx.stroke();
+                    </div>
+                </div>
+                
+                <!-- 方案 D: 多维仪表盘 -->
+                <div class="demo-card">
+                    <div class="demo-title">方案 D: 数字仪表盘</div>
+                    <div class="dashboard-mini">
+                        <div class="metric-box">
+                            <div class="metric-value" id="metric-cpu">45%</div>
+                            <div class="metric-label">CPU</div>
+                            <div class="metric-trend down">↓ 5%</div>
+                        </div>
+                        <div class="metric-box">
+                            <div class="metric-value" id="metric-mem">78%</div>
+                            <div class="metric-label">内存</div>
+                            <div class="metric-trend up">↑ 2%</div>
+                        </div>
+                        <div class="metric-box">
+                            <div class="metric-value" id="metric-net">12MB/s</div>
+                            <div class="metric-label">网络</div>
+                            <div class="metric-trend up">↑ 3MB</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px; padding: 15px; background: #2a2a4a; border-radius: 8px;">
+                <strong>💡 推荐方案：</strong>方案 A（线性进度条）+ 方案 D（数字仪表盘）
+                <ul style="margin-top: 10px; margin-left: 20px; color: #aaa;">
+                    <li>✅ 视觉清晰：进度条直观显示占比</li>
+                    <li>✅ 性能优秀：纯 CSS 实现，无 Canvas 开销</li>
+                    <li>✅ 响应式：易于适配不同屏幕</li>
+                    <li>✅ 实时更新：使用 requestAnimationFrame 优化</li>
+                </ul>
+            </div>
+        </section>
+        
+        <!-- ========== 最佳实践 ========== -->
+        <section>
+            <h2>⚡ 实时更新最佳实践</h2>
+            
+            <div class="demo-grid">
+                <div class="demo-card">
+                    <div class="demo-title">性能优化</div>
+                    <ul style="color: #aaa; font-size: 0.9em;">
+                        <li>使用 CSS 动画而非 JS 动画</li>
+                        <li>使用 requestAnimationFrame 节流</li>
+                        <li>避免频繁 DOM 操作</li>
+                        <li>使用 transform 而非 left/top</li>
+                        <li>限制消息数量（最多 100 条）</li>
+                    </ul>
+                </div>
+                
+                <div class="demo-card">
+                    <div class="demo-title">数据更新策略</div>
+                    <ul style="color: #aaa; font-size: 0.9em;">
+                        <li>WebSocket 实时推送</li>
+                        <li>状态变化时才更新 UI</li>
+                        <li>使用防抖/节流控制频率</li>
+                        <li>离线时显示缓存数据</li>
+                        <li>重连时同步最新状态</li>
+                    </ul>
+                </div>
+                
+                <div class="demo-card">
+                    <div class="demo-title">用户体验</div>
+                    <ul style="color: #aaa; font-size: 0.9em;">
+                        <li>提供视觉反馈（加载动画）</li>
+                        <li>渐变动画过渡（300ms）</li>
+                        <li>错误状态友好提示</li>
+                        <li>提供手动刷新选项</li>
+                        <li>声音/震动提示（可选）</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <div class="demo-title">核心代码示例</div>
+                <div class="code-block">
+<span class="code-comment">// 实时更新状态（优化版）</span>
+<span class="code-keyword">function</span> updateStatus(agentId, status) {
+  <span class="code-keyword">const</span> dot = document.querySelector(<span class="code-string">`#agent-${agentId} .status-dot`</span>);
+  
+  <span class="code-comment">// 批量更新 class，避免重排</span>
+  dot.className = <span class="code-string">`status-dot ${status}`</span>;
+  
+  <span class="code-comment">// 只在必要时更新文本</span>
+  <span class="code-keyword">const</span> badge = dot.nextElementSibling;
+  <span class="code-keyword">if</span> (badge.textContent !== statusText) {
+    badge.textContent = statusText;
+  }
+}
+
+<span class="code-comment">// 资源监控更新（节流）</span>
+<span class="code-keyword">let</span> lastUpdateTime = 0;
+<span class="code-keyword">function</span> updateResources(data) {
+  <span class="code-keyword">const</span> now = Date.now();
+  <span class="code-keyword">if</span> (now - lastUpdateTime < 1000) <span class="code-keyword">return</span>; <span class="code-comment">// 1秒更新一次</span>
+  lastUpdateTime = now;
+  
+  requestAnimationFrame(() => {
+    updateProgressBar(<span class="code-string">'cpu'</span>, data.cpu);
+    updateProgressBar(<span class="code-string">'memory'</span>, data.memory);
+  });
+}
+                </div>
+            </div>
+        </section>
+        
+    </div>
+    
+    <script>
+        // 演示：动态更新资源监控
+        function updateMetrics() {
+            const cpu = Math.floor(Math.random() * 100);
+            const mem = Math.floor(Math.random() * 100);
+            
+            document.getElementById('metric-cpu').textContent = cpu + '%';
+            document.getElementById('metric-mem').textContent = mem + '%';
+        }
+        
+        // 每 2 秒更新一次
+        setInterval(updateMetrics, 2000);
+        
+        // 演示：绘制迷你折线图
+        function drawSparkline(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const width = canvas.offsetWidth;
+            const height = canvas.offsetHeight;
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            // 生成随机数据
+            const data = Array.from({length: 20}, () => Math.random() * height);
+            
+            // 绘制折线
+            ctx.strokeStyle = '#667eea';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            data.forEach((value, index) => {
+                const x = (index / (data.length - 1)) * width;
+                const y = height - value;
+                
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            
+            ctx.stroke();
+            
+            // 绘制渐变填充
+            const gradient = ctx.createLinearGradient(0, 0, 0, height);
+            gradient.addColorStop(0, 'rgba(102, 126, 234, 0.3)');
+            gradient.addColorStop(1, 'rgba(102, 126, 234, 0)');
+            
+            ctx.lineTo(width, height);
+            ctx.lineTo(0, height);
+            ctx.closePath();
+            ctx.fillStyle = gradient;
+            ctx.fill();
+        }
+        
+        // 初始化
+        drawSparkline('sparkline-cpu');
+        
+        // 演示：加载更多消息
+        function loadMoreMessages() {
+            const container = document.getElementById('chat-scroll');
+            const loadMore = container.querySelector('.load-more');
+            
+            loadMore.textContent = '加载中...';
+            
+            setTimeout(() => {
+                const newMessages = `
+                    <div class="message">
+                        <div class="message-header">
+                            <div class="message-avatar">🏗️</div>
+                            <span class="message-sender">架构师</span>
+                            <span class="message-time">昨天 09:00</span>
+                        </div>
+                        <div class="message-bubble">
+                            架构设计已完成 📐
+                        </div>
+                    </div>
+                `;
+                
+                loadMore.insertAdjacentHTML('afterend', newMessages);
+                loadMore.textContent = '↑ 加载更多消息';
+            }, 500);
+        }
+    </script>
+</body>
+</html>

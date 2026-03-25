@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>游戏化办公室 - Agent 协作空间</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      /* 游戏化配色 */
+      --bg-floor: #FFF8E7;
+      --color-assistant: #FF9800;
+      --color-main: #FFA726;
+      --color-coder: #42A5F5;
+      --color-architect: #AB47BC;
+      --color-researcher: #66BB6A;
+      --color-editor: #EC407A;
+      
+      /* 阴影 */
+      --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.08);
+      --shadow-medium: 0 6px 20px rgba(0, 0, 0, 0.12);
+      --shadow-strong: 0 10px 30px rgba(0, 0, 0, 0.15);
+    }
+
+    body {
+      font-family: 'Comic Sans MS', -apple-system, sans-serif;
+      background: linear-gradient(180deg, #FFF8E1 0%, #FFE8D6 100%);
+      margin: 0;
+      padding: 0;
+    }
+
+    .game-container {
+      width: 100%;
+      min-height: 100vh;
+      background: linear-gradient(180deg, #FFF8E7 0%, #FFE8D6 100%);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 极简状态栏 */
+    .status-bar {
+      height: 50px;
+      background: linear-gradient(180deg, #FFA726 0%, #FF9800 100%);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+      border-bottom: 3px solid #F57C00;
+      box-shadow: var(--shadow-medium);
+      flex-shrink: 0;
+    }
+
+    .status-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: white;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .total-xp-badge {
+      background: rgba(255, 255, 255, 0.95);
+      color: #FF6F00;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      border: 2px solid white;
+    }
+
+    /* 办公室场景区域 */
+    .office-area {
+      flex: 0 0 55%;
+      background: 
+        repeating-linear-gradient(
+          90deg,
+          #FFE4B5 0px,
+          #FFE4B5 58px,
+          #FFDAB9 58px,
+          #FFDAB9 120px
+        );
+      position: relative;
+      padding: 20px;
+      border-bottom: 3px solid #DEB887;
+    }
+
+    /* Agent 卡片网格 */
+    .agents-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      padding: 10px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Agent 卡片 */
+    .agent-card {
+      background: white;
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: var(--shadow-medium);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: 3px solid;
+      position: relative;
+    }
+
+    .agent-card:hover {
+      transform: translateY(-6px) scale(1.02);
+      box-shadow: var(--shadow-strong);
+    }
+
+    .agent-card.status-working {
+      border-color: #4CAF50;
+    }
+
+    .agent-card.status-idle {
+      border-color: #BDBDBD;
+    }
+
+    .agent-card.status-tired {
+      border-color: #FF9800;
+    }
+
+    /* Agent 头像 */
+    .agent-avatar-wrapper {
+      text-align: center;
+      margin-bottom: 6px;
+      position: relative;
+    }
+
+    .agent-avatar {
+      font-size: 48px;
+      display: inline-block;
+      animation: float 3s ease-in-out infinite;
+      filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.2));
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-6px); }
+    }
+
+    /* 等级徽章 */
+    .level-badge {
+      position: absolute;
+      top: -4px;
+      right: 8px;
+      background: linear-gradient(135deg, #FFD700 0%, #FFA000 100%);
+      color: white;
+      padding: 3px 10px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: bold;
+      box-shadow: 0 2px 6px rgba(255, 193, 7, 0.5);
+      border: 2px solid white;
+    }
+
+    /* Agent 信息 */
+    .agent-info {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .agent-name {
+      font-size: 16px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 1px;
+    }
+
+    .agent-role {
+      font-size: 11px;
+      color: #666;
+    }
+
+    /* 经验条 */
+    .xp-container {
+      margin-bottom: 6px;
+    }
+
+    .xp-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      color: #666;
+      margin-bottom: 2px;
+    }
+
+    .xp-bar {
+      height: 14px;
+      background: #E8F5E9;
+      border-radius: 7px;
+      overflow: hidden;
+      box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .xp-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #66BB6A 0%, #4CAF50 100%);
+      border-radius: 7px;
+      transition: width 0.5s ease;
+      position: relative;
+    }
+
+    .xp-fill::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 50%;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, transparent 100%);
+    }
+
+    /* 精力条 */
+    .energy-container {
+      margin-bottom: 6px;
+    }
+
+    .energy-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      color: #666;
+      margin-bottom: 2px;
+    }
+
+    .energy-bar {
+      height: 12px;
+      background: #F5F5F5;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .energy-fill {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.3s ease, background 0.3s ease;
+    }
+
+    .energy-fill.high {
+      background: linear-gradient(90deg, #66BB6A 0%, #4CAF50 100%);
+    }
+
+    .energy-fill.medium {
+      background: linear-gradient(90deg, #FFD54F 0%, #FFC107 100%);
+    }
+
+    .energy-fill.low {
+      background: linear-gradient(90deg, #EF5350 0%, #F44336 100%);
+    }
+
+    /* 状态标签 */
+    .status-tag {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 10px;
+      font-size: 9px;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    .status-tag.working {
+      background: linear-gradient(135deg, #C8E6C9 0%, #A5D6A7 100%);
+      color: #2E7D32;
+    }
+
+    .status-tag.idle {
+      background: linear-gradient(135deg, #E0E0E0 0%, #BDBDBD 100%);
+      color: #616161;
+    }
+
+    .status-tag.tired {
+      background: linear-gradient(135deg, #FFE0B2 0%, #FFCC80 100%);
+      color: #EF6C00;
+    }
+
+    /* XP 弹出动画 */
+    .xp-popup {
+      position: absolute;
+      top: 0;
+      right: 8px;
+      font-size: 14px;
+      font-weight: bold;
+      color: #4CAF50;
+      animation: xpFloat 1.5s ease-out forwards;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    @keyframes xpFloat {
+      0% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(-30px);
+      }
+    }
+
+    /* 升级特效 */
+    .level-up-effect {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 36px;
+      animation: levelUpBurst 1s ease-out forwards;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    @keyframes levelUpBurst {
+      0% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(0.5);
+      }
+      50% {
+        transform: translate(-50%, -50%) scale(1.2);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1.5);
+      }
+    }
+
+    /* 聊天区域 */
+    .chat-area {
+      flex: 0 0 45%;
+      background: white;
+      display: flex;
+      flex-direction: column;
+      border-top: 3px solid #FFA726;
+    }
+
+    /* 聊天标题 */
+    .chat-header {
+      background: linear-gradient(180deg, #FFF8E1 0%, #FFE0B2 100%);
+      padding: 12px 20px;
+      border-bottom: 2px solid #FFD54F;
+      font-size: 14px;
+      font-weight: bold;
+      color: #FF6F00;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* 消息列表 */
+    .messages-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      background: 
+        linear-gradient(180deg, #FAFAFA 0%, #F5F5F5 100%);
+    }
+
+    .message {
+      margin-bottom: 12px;
+      display: flex;
+      gap: 12px;
+      animation: messageSlide 0.3s ease-out;
+    }
+
+    @keyframes messageSlide {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .message-avatar {
+      font-size: 32px;
+      flex-shrink: 0;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+    }
+
+    .message-content {
+      flex: 1;
+      background: white;
+      padding: 12px 16px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      border-left: 3px solid #FFA726;
+    }
+
+    .message-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .message-sender {
+      font-size: 12px;
+      font-weight: bold;
+      color: #FF6F00;
+    }
+
+    .message-time {
+      font-size: 10px;
+      color: #999;
+    }
+
+    .message-text {
+      font-size: 13px;
+      color: #333;
+      line-height: 1.5;
+    }
+
+    .message.system {
+      justify-content: center;
+    }
+
+    .message.system .message-content {
+      background: linear-gradient(135deg, #FFF8E1 0%, #FFE0B2 100%);
+      text-align: center;
+      border-left: none;
+      border: 2px solid #FFD54F;
+      max-width: 80%;
+    }
+
+    /* 输入区域 */
+    .input-area {
+      background: white;
+      padding: 16px;
+      border-top: 2px solid #F5F5F5;
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .input-wrapper {
+      flex: 1;
+      background: #FAFAFA;
+      border-radius: 20px;
+      padding: 0 16px;
+      min-height: 40px;
+      max-height: 120px;
+      border: 2px solid #E0E0E0;
+      display: flex;
+      align-items: center;
+      transition: all 0.3s ease;
+    }
+
+    .input-wrapper:focus-within {
+      border-color: #FFA726;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(255, 167, 38, 0.15);
+    }
+
+    .chat-input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-size: 14px;
+      outline: none;
+      resize: none;
+      min-height: 38px;
+      max-height: 118px;
+      padding: 10px 0;
+      font-family: inherit;
+    }
+
+    .send-btn {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #FFA726 0%, #FF9800 100%);
+      border: none;
+      border-radius: 50%;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
+      flex-shrink: 0;
+    }
+
+    .send-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 16px rgba(255, 152, 0, 0.6);
+    }
+
+    .send-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* Agent 详情弹窗 */
+    .agent-detail-popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.9);
+      background: white;
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s ease;
+      min-width: 280px;
+      border: 4px solid #FFA726;
+    }
+
+    .agent-detail-popup.show {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+      pointer-events: auto;
+    }
+
+    .popup-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 3px solid #FFE0B2;
+    }
+
+    .popup-avatar {
+      font-size: 48px;
+    }
+
+    .popup-info h3 {
+      font-size: 18px;
+      color: #333;
+      margin-bottom: 4px;
+    }
+
+    .popup-info p {
+      font-size: 11px;
+      color: #666;
+    }
+
+    .popup-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .stat-box {
+      background: linear-gradient(135deg, #FFF8E1 0%, #FFE0B2 100%);
+      padding: 12px;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 16px;
+      font-weight: bold;
+      color: #FF6F00;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 28px;
+      height: 28px;
+      background: #FF5722;
+      border: none;
+      border-radius: 50%;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+
+    .close-btn:hover {
+      transform: rotate(90deg);
+    }
+
+    /* 闪光特效 */
+    .sparkle {
+      position: absolute;
+      pointer-events: none;
+      animation: sparkleAnim 0.6s ease-out forwards;
+    }
+
+    @keyframes sparkleAnim {
+      0% {
+        opacity: 1;
+        transform: scale(0) rotate(0deg);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1.2) rotate(180deg);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(0.8) rotate(360deg);
+      }
+    }
+
+    /* 响应式 */
+    @media (max-width: 768px) {
+      .agents-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .chat-area {
+        flex: 0 0 50%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <!-- 极简状态栏 -->
+    <div class="status-bar">
+      <div class="status-left">
+        <span class="status-title">🎮 游戏化办公室</span>
+      </div>
+      <div class="total-xp-badge">
+        ⭐ <span id="totalXP">2,450</span> XP
+      </div>
+    </div>
+
+    <!-- 办公室场景区域 -->
+    <div class="office-area">
+      <div class="agents-grid" id="agentsGrid">
+        <!-- 动态生成 -->
+      </div>
+    </div>
+
+    <!-- 聊天区域 -->
+    <div class="chat-area">
+      <div class="chat-header">
+        💬 团队协作聊天
+        <span style="font-size: 11px; color: #666;">实时消息</span>
+      </div>
+      
+      <div class="messages-container" id="messagesContainer">
+        <!-- 动态生成消息 -->
+      </div>
+
+      <div class="input-area">
+        <div class="input-wrapper">
+          <textarea 
+            class="chat-input" 
+            placeholder="输入消息或任务..." 
+            id="chatInput"
+            rows="1"
+            onkeydown="handleKeyDown(event)"></textarea>
+        </div>
+        <button class="send-btn" onclick="sendMessage()">▶</button>
+      </div>
+    </div>
+
+    <!-- Agent 详情弹窗 -->
+    <div class="agent-detail-popup" id="agentDetailPopup">
+      <button class="close-btn" onclick="closeDetailPopup()">✕</button>
+      <div class="popup-header">
+        <div class="popup-avatar" id="popupAvatar">🐿️</div>
+        <div class="popup-info">
+          <h3 id="popupName">小松</h3>
+          <p id="popupRole">主助手</p>
+        </div>
+      </div>
+      <div class="popup-stats">
+        <div class="stat-box">
+          <div class="stat-label">等级</div>
+          <div class="stat-value" id="popupLevel">Lv.5</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">经验</div>
+          <div class="stat-value" id="popupXP">450/600</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">精力</div>
+          <div class="stat-value" id="popupEnergy">85%</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">完成任务</div>
+          <div class="stat-value" id="popupCompleted">23</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 游戏数据
+    const gameState = {
+      totalXP: 2450,
+      agents: [
+        {
+          id: 'assistant',
+          name: '管家',
+          role: '服务协调',
+          avatar: '🤵',
+          color: '#FF9800',
+          level: 3,
+          xp: 280,
+          xpToLevel: 400,
+          energy: 90,
+          maxEnergy: 100,
+          status: 'idle',
+          tasksCompleted: 15
+        },
+        {
+          id: 'main',
+          name: '小松',
+          role: '主助手',
+          avatar: '🐿️',
+          color: '#FFA726',
+          level: 5,
+          xp: 450,
+          xpToLevel: 600,
+          energy: 85,
+          maxEnergy: 100,
+          status: 'working',
+          tasksCompleted: 23
+        },
+        {
+          id: 'coder',
+          name: '工程师',
+          role: '开发',
+          avatar: '👨‍💻',
+          color: '#42A5F5',
+          level: 4,
+          xp: 350,
+          xpToLevel: 500,
+          energy: 60,
+          maxEnergy: 100,
+          status: 'working',
+          tasksCompleted: 18
+        },
+        {
+          id: 'architect',
+          name: '架构师',
+          role: '设计',
+          avatar: '📐',
+          color: '#AB47BC',
+          level: 6,
+          xp: 520,
+          xpToLevel: 700,
+          energy: 45,
+          maxEnergy: 100,
+          status: 'tired',
+          tasksCompleted: 31
+        },
+        {
+          id: 'researcher',
+          name: '研究员',
+          role: '研究',
+          avatar: '🔬',
+          color: '#66BB6A',
+          level: 4,
+          xp: 380,
+          xpToLevel: 500,
+          energy: 70,
+          maxEnergy: 100,
+          status: 'working',
+          tasksCompleted: 20
+        },
+        {
+          id: 'editor',
+          name: '编辑',
+          role: '内容',
+          avatar: '✍️',
+          color: '#EC407A',
+          level: 3,
+          xp: 260,
+          xpToLevel: 400,
+          energy: 95,
+          maxEnergy: 100,
+          status: 'idle',
+          tasksCompleted: 12
+        }
+      ],
+      messages: [
+        { id: 1, sender: 'main', name: '小松', avatar: '🐿️', text: 'UI设计已完成75%，预计1小时后完成！', time: '12:45', type: 'message' },
+        { id: 2, sender: 'coder', name: '工程师', avatar: '👨‍💻', text: 'API接口开发中，已测试通过3个接口', time: '12:46', type: 'message' },
+        { id: 3, sender: 'system', name: '系统', avatar: '🎮', text: '小松 获得 +50 XP', time: '12:47', type: 'system' },
+        { id: 4, sender: 'researcher', name: '研究员', avatar: '🔬', text: '用户调研数据分析完成40%，发现了一些有趣的趋势', time: '12:48', type: 'message' },
+        { id: 5, sender: 'architect', name: '架构师', avatar: '📐', text: '精力有点不足，需要休息一下...', time: '12:50', type: 'message' }
+      ]
+    };
+
+    // 渲染 Agent 卡片
+    function renderAgents() {
+      const grid = document.getElementById('agentsGrid');
+      grid.innerHTML = gameState.agents.map(agent => `
+        <div class="agent-card status-${agent.status}" 
+             style="border-color: ${agent.color}"
+             onclick="showAgentDetail('${agent.id}')"
+             data-agent-id="${agent.id}">
+          <div class="level-badge">Lv.${agent.level}</div>
+          <div class="agent-avatar-wrapper">
+            <div class="agent-avatar">${agent.avatar}</div>
+          </div>
+          <div class="agent-info">
+            <div class="agent-name">${agent.name}</div>
+            <div class="agent-role">${agent.role}</div>
+          </div>
+          <div class="xp-container">
+            <div class="xp-label">
+              <span>经验值</span>
+              <span>${agent.xp}/${agent.xpToLevel}</span>
+            </div>
+            <div class="xp-bar">
+              <div class="xp-fill" style="width: ${(agent.xp / agent.xpToLevel) * 100}%"></div>
+            </div>
+          </div>
+          <div class="energy-container">
+            <div class="energy-label">
+              <span>精力值</span>
+              <span>${agent.energy}%</span>
+            </div>
+            <div class="energy-bar">
+              <div class="energy-fill ${getEnergyClass(agent.energy)}" 
+                   style="width: ${agent.energy}%"></div>
+            </div>
+          </div>
+          <div style="text-align: center;">
+            <span class="status-tag ${agent.status}">${getStatusText(agent.status)}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // 渲染消息
+    function renderMessages() {
+      const container = document.getElementById('messagesContainer');
+      container.innerHTML = gameState.messages.map(msg => `
+        <div class="message ${msg.type}">
+          <div class="message-avatar">${msg.avatar}</div>
+          <div class="message-content">
+            <div class="message-header">
+              <span class="message-sender">${msg.name}</span>
+              <span class="message-time">${msg.time}</span>
+            </div>
+            <div class="message-text">${msg.text}</div>
+          </div>
+        </div>
+      `).join('');
+      
+      // 滚动到底部
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // 获取精力等级样式
+    function getEnergyClass(energy) {
+      if (energy >= 70) return 'high';
+      if (energy >= 30) return 'medium';
+      return 'low';
+    }
+
+    // 获取状态文本
+    function getStatusText(status) {
+      const map = {
+        'working': '工作中',
+        'idle': '空闲',
+        'tired': '疲劳'
+      };
+      return map[status] || status;
+    }
+
+    // 显示 Agent 详情
+    function showAgentDetail(agentId) {
+      const agent = gameState.agents.find(a => a.id === agentId);
+      if (!agent) return;
+
+      document.getElementById('popupAvatar').textContent = agent.avatar;
+      document.getElementById('popupName').textContent = agent.name;
+      document.getElementById('popupRole').textContent = agent.role;
+      document.getElementById('popupLevel').textContent = `Lv.${agent.level}`;
+      document.getElementById('popupXP').textContent = `${agent.xp}/${agent.xpToLevel}`;
+      document.getElementById('popupEnergy').textContent = `${agent.energy}%`;
+      document.getElementById('popupCompleted').textContent = agent.tasksCompleted;
+
+      document.getElementById('agentDetailPopup').classList.add('show');
+    }
+
+    // 关闭详情弹窗
+    function closeDetailPopup() {
+      document.getElementById('agentDetailPopup').classList.remove('show');
+    }
+
+    // 增加 XP
+    function addXP(agentId, amount) {
+      const agent = gameState.agents.find(a => a.id === agentId);
+      if (!agent) return;
+
+      agent.xp += amount;
+      gameState.totalXP += amount;
+
+      // 检查升级
+      if (agent.xp >= agent.xpToLevel) {
+        agent.level++;
+        agent.xp -= agent.xpToLevel;
+        agent.xpToLevel = Math.floor(agent.xpToLevel * 1.5);
+        showLevelUpEffect(agentId);
+      }
+
+      showXPPopup(agentId, amount);
+      updateTotalXP();
+      renderAgents();
+    }
+
+    // 显示 XP 弹出
+    function showXPPopup(agentId, amount) {
+      const card = document.querySelector(`[data-agent-id="${agentId}"]`);
+      if (!card) return;
+
+      const popup = document.createElement('div');
+      popup.className = 'xp-popup';
+      popup.textContent = `+${amount} XP`;
+      card.appendChild(popup);
+
+      setTimeout(() => popup.remove(), 1500);
+    }
+
+    // 显示升级特效
+    function showLevelUpEffect(agentId) {
+      const card = document.querySelector(`[data-agent-id="${agentId}"]`);
+      if (!card) return;
+
+      const effect = document.createElement('div');
+      effect.className = 'level-up-effect';
+      effect.textContent = '🎉 UPGRADE!';
+      card.appendChild(effect);
+
+      // 闪光效果
+      for (let i = 0; i < 8; i++) {
+        setTimeout(() => {
+          const sparkle = document.createElement('div');
+          sparkle.className = 'sparkle';
+          sparkle.textContent = '✨';
+          sparkle.style.left = `${Math.random() * 100}%`;
+          sparkle.style.top = `${Math.random() * 100}%`;
+          card.appendChild(sparkle);
+          setTimeout(() => sparkle.remove(), 600);
+        }, i * 50);
+      }
+
+      setTimeout(() => effect.remove(), 1000);
+    }
+
+    // 更新总 XP
+    function updateTotalXP() {
+      document.getElementById('totalXP').textContent = 
+        gameState.totalXP.toLocaleString();
+    }
+
+    // 发送消息
+    function sendMessage() {
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      // 添加用户消息
+      const now = new Date();
+      const time = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+      
+      gameState.messages.push({
+        id: Date.now(),
+        sender: 'user',
+        name: '你',
+        avatar: '👤',
+        text: text,
+        time: time,
+        type: 'message'
+      });
+
+      input.value = '';
+      renderMessages();
+
+      // 模拟 Agent 回复
+      setTimeout(() => {
+        const idleAgents = gameState.agents.filter(a => a.status === 'idle');
+        if (idleAgents.length > 0) {
+          const agent = idleAgents[Math.floor(Math.random() * idleAgents.length)];
+          agent.status = 'working';
+          
+          gameState.messages.push({
+            id: Date.now() + 1,
+            sender: agent.id,
+            name: agent.name,
+            avatar: agent.avatar,
+            text: `收到！我来处理这个任务：${text.substring(0, 30)}...`,
+            time: time,
+            type: 'message'
+          });
+
+          addXP(agent.id, 30);
+          renderAgents();
+          renderMessages();
+        }
+      }, 1000);
+    }
+
+    // 处理键盘事件
+    function handleKeyDown(event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+      }
+    }
+
+    // 初始化
+    function init() {
+      renderAgents();
+      renderMessages();
+
+      // 模拟任务进度
+      setInterval(() => {
+        gameState.agents.forEach(agent => {
+          if (agent.status === 'working') {
+            agent.energy = Math.max(0, agent.energy - 1);
+            if (agent.energy === 0) {
+              agent.status = 'tired';
+            }
+          }
+        });
+        renderAgents();
+      }, 5000);
+
+      console.log('🎮 游戏化办公室场景加载完成！');
+    }
+
+    // 监听点击关闭弹窗
+    document.addEventListener('click', (e) => {
+      const popup = document.getElementById('agentDetailPopup');
+      if (popup.classList.contains('show') && 
+          !popup.contains(e.target) && 
+          !e.target.closest('.agent-card')) {
+        closeDetailPopup();
+      }
+    });
+
+    // 启动
+    init();
+  </script>
+</body>
+</html>

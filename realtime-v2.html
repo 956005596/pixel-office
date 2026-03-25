@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多 Agent 协作工作台 - 稳定版</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .app {
+            display: grid;
+            grid-template-columns: 280px 1fr 350px;
+            grid-template-rows: 60px 1fr;
+            height: 100vh;
+            gap: 1px;
+            background: #2a2a2a;
+        }
+        .header {
+            grid-column: 1 / -1;
+            background: linear-gradient(90deg, #1a1a1a 0%, #2d2d2d 100%);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            border-bottom: 1px solid #3a3a3a;
+        }
+        .header h1 { font-size: 1.3em; display: flex; align-items: center; gap: 10px; }
+        .header-right { display: flex; gap: 15px; align-items: center; }
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: #1a3a1a;
+            border-radius: 20px;
+            font-size: 0.85em;
+        }
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #00ff00;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        .live-dot.disconnected { background: #ff4444; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .sidebar { background: #1a1a1a; overflow-y: auto; }
+        .sidebar-header {
+            padding: 15px;
+            border-bottom: 1px solid #2a2a2a;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .agent-list { padding: 10px; }
+        .agent-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #252525;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .agent-item:hover { background: #2a2a2a; transform: translateX(3px); }
+        .agent-item.active { background: #2a2a2a; border-left-color: #667eea; }
+        .agent-item.clicking { 
+            opacity: 0.7; 
+            transform: scale(0.98); 
+        }
+        .agent-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            position: relative;
+        }
+        .status-dot {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 2px solid #1a1a1a;
+        }
+        .status-dot.idle { background: #28a745; }
+        .status-dot.busy { background: #ffc107; }
+        .status-dot.offline { background: #6c757d; }
+        .agent-info { flex: 1; }
+        .agent-name { font-weight: 500; margin-bottom: 3px; }
+        .agent-task { font-size: 0.8em; color: #888; }
+        .agent-status-badge {
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.7em;
+            font-weight: bold;
+        }
+        .agent-status-badge.idle { background: #1a3a1a; color: #28a745; }
+        .agent-status-badge.busy { background: #3a3a1a; color: #ffc107; }
+        .agent-status-badge.offline { background: #2a2a2a; color: #6c757d; }
+        .workspace { background: #0f0f0f; display: flex; flex-direction: column; }
+        .workspace-header {
+            padding: 15px 20px;
+            background: #1a1a1a;
+            border-bottom: 1px solid #2a2a2a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .workspace-content { flex: 1; overflow-y: auto; padding: 20px; }
+        .agent-detail-card {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+        .agent-detail-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .agent-detail-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #252525;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3em;
+        }
+        .agent-detail-info h2 { font-size: 1.5em; margin-bottom: 5px; }
+        .agent-detail-info p { color: #888; margin-bottom: 10px; }
+        .skill-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+        .skill-tag {
+            padding: 4px 10px;
+            background: #252525;
+            border-radius: 12px;
+            font-size: 0.8em;
+            border: 1px solid #3a3a3a;
+        }
+        .current-task {
+            background: #252525;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .current-task h3 { margin-bottom: 10px; font-size: 0.9em; color: #888; }
+        .interaction-area {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .interaction-area h3 { margin-bottom: 15px; font-size: 0.9em; color: #888; }
+        .quick-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
+        .action-btn {
+            padding: 8px 16px;
+            background: #252525;
+            border: 1px solid #3a3a3a;
+            border-radius: 6px;
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .action-btn:hover { background: #667eea; border-color: #667eea; }
+        .action-btn:active { transform: scale(0.95); }
+        .message-input-area { display: flex; gap: 10px; }
+        .message-input {
+            flex: 1;
+            padding: 12px;
+            background: #0f0f0f;
+            border: 1px solid #3a3a3a;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 0.95em;
+        }
+        .message-input:focus { outline: none; border-color: #667eea; }
+        .send-btn {
+            padding: 12px 20px;
+            background: #667eea;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .send-btn:hover { background: #5568d3; }
+        .chat-panel { background: #1a1a1a; display: flex; flex-direction: column; }
+        .chat-header {
+            padding: 15px;
+            background: #252525;
+            border-bottom: 1px solid #2a2a2a;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .sync-status { font-size: 0.8em; color: #28a745; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 15px; }
+        .chat-message { margin-bottom: 15px; animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .chat-message-header { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+        .chat-message-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #252525;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9em;
+        }
+        .chat-message-sender { font-weight: 500; font-size: 0.9em; }
+        .chat-message-time { font-size: 0.75em; color: #666; }
+        .chat-message-text {
+            padding: 10px;
+            background: #252525;
+            border-radius: 8px;
+            font-size: 0.9em;
+            line-height: 1.5;
+            margin-left: 32px;
+        }
+        .chat-message.own .chat-message-text { background: #2a3a5a; }
+        .task-board {
+            background: #0f0f0f;
+            border-top: 1px solid #2a2a2a;
+            padding: 15px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        .task-board-header { display: flex; justify-content: space-between; margin-bottom: 10px; font-weight: bold; }
+        .task-item {
+            background: #1a1a1a;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border-left: 3px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .task-item-title { font-size: 0.9em; }
+        .task-item-meta { display: flex; gap: 10px; font-size: 0.8em; color: #888; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1a1a1a; }
+        ::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4a4a4a; }
+        input, textarea { font-family: inherit; }
+        .error-message { background: #3a1a1a; color: #ff6b6b; padding: 10px; border-radius: 6px; margin: 10px 0; }
+        .connecting { text-align: center; padding: 20px; color: #888; }
+
+        /* 拓扑图和进度条样式 */
+        .task-progress-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #252525;
+            border-radius: 8px;
+        }
+        
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .progress-title { font-size: 0.9em; color: #888; font-weight: 500; }
+        .progress-percentage { font-size: 0.9em; color: #667eea; font-weight: bold; }
+        
+        .progress-bar-container {
+            background: #1a1a1a;
+            border-radius: 10px;
+            height: 10px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+        
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+        
+        .task-stages { display: flex; gap: 8px; flex-direction: column; }
+        
+        .stage-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: #1a1a1a;
+            border-radius: 6px;
+            border-left: 3px solid transparent;
+        }
+        
+        .stage-item.completed { border-left-color: #28a745; opacity: 0.7; }
+        .stage-item.active { border-left-color: #667eea; background: #2a2a4a; }
+        .stage-item.pending { border-left-color: #3a3a3a; opacity: 0.5; }
+        .stage-icon { font-size: 1em; }
+        .stage-name { flex: 1; font-size: 0.85em; }
+        .stage-progress { font-size: 0.75em; color: #888; }
+        .stage-progress.active { color: #667eea; font-weight: bold; }
+
+        /* 拓扑图 */
+        .topology-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #252525;
+            border-radius: 8px;
+        }
+        
+        .topology-title {
+            font-size: 0.9em;
+            color: #888;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .topology-svg {
+            width: 100%;
+            height: 200px;
+            background: #1a1a1a;
+            border-radius: 8px;
+        }
+
+        /* 调试面板 */
+        .debug-panel {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #3a3a3a;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 0.75em;
+            max-width: 300px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 9999;
+            display: none;
+        }
+        
+        .debug-panel.visible { display: block; }
+        .debug-item { padding: 4px 0; border-bottom: 1px solid #2a2a2a; }
+        .debug-time { color: #667eea; }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="header">
+            <h1>🤖 多 Agent 协作工作台 <span style="font-size: 0.7em; color: #888;">v2.0 稳定版</span></h1>
+            <div class="header-right">
+                <div class="live-indicator">
+                    <div class="live-dot" id="connection-dot"></div>
+                    <span id="connection-status">连接中...</span>
+                </div>
+                <span style="color: #888; font-size: 0.9em;" id="current-time"></span>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <span>团队成员</span>
+                <span style="color: #888; font-size: 0.85em;" id="online-count">连接中</span>
+            </div>
+            <div class="agent-list" id="agent-list">
+                <div class="connecting">正在连接服务器...</div>
+            </div>
+        </div>
+
+        <div class="workspace">
+            <div class="workspace-header">
+                <h2>选择一个 Agent 开始交互</h2>
+            </div>
+            <div class="workspace-content" id="workspace-content">
+                <div class="connecting">请从左侧选择一个 Agent</div>
+            </div>
+        </div>
+
+        <div class="chat-panel">
+            <div class="chat-header">
+                <span>💬 团队频道</span>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <span class="sync-status" id="sync-status">● 离线</span>
+                    <button class="action-btn" id="export-btn" title="导出聊天记录">📥</button>
+                    <button class="action-btn" id="clear-btn" title="清除聊天记录" style="background: #3a1a1a;">🗑️</button>
+                    <button class="action-btn" id="debug-btn" title="调试面板">🐛</button>
+                </div>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <div class="connecting">连接后显示消息...</div>
+            </div>
+            <div class="task-board">
+                <div class="task-board-header">
+                    <span>📋 活跃任务</span>
+                    <span style="color: #888; font-size: 0.85em;" id="task-count">-</span>
+                </div>
+                <div id="task-list">
+                    <div class="connecting">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 调试面板 -->
+    <div class="debug-panel" id="debug-panel">
+        <div style="font-weight: bold; margin-bottom: 5px;">🐛 调试日志</div>
+        <div id="debug-log"></div>
+    </div>
+
+    <script>
+        // ========== 配置 ==========
+        const API_BASE = 'http://localhost:3100';
+        const WS_URL = 'ws://localhost:3101';
+        const DEBUG = true; // 开启调试模式
+
+        // ========== 状态管理（改进版） ==========
+        const state = {
+            agents: [],
+            selectedAgent: null,
+            messages: [],
+            tasks: [],
+            ws: null,
+            connected: false,
+            userId: null,
+            isRendering: false, // 防止重复渲染
+            lastClickTime: 0, // 防抖
+            clickDebounceMs: 100 // 防抖时间
+        };
+
+        // ========== 调试工具 ==========
+        function debug(message, data = null) {
+            if (!DEBUG) return;
+            
+            const timestamp = new Date().toLocaleTimeString('zh-CN', { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit',
+                fractionalSecondDigits: 3
+            });
+            
+            const logMessage = `[${timestamp}] ${message}`;
+            console.log(logMessage, data || '');
+            
+            // 更新调试面板
+            const debugPanel = document.getElementById('debug-panel');
+            if (debugPanel && debugPanel.classList.contains('visible')) {
+                const debugLog = document.getElementById('debug-log');
+                const item = document.createElement('div');
+                item.className = 'debug-item';
+                item.innerHTML = `<span class="debug-time">${timestamp}</span> ${message}`;
+                debugLog.insertBefore(item, debugLog.firstChild);
+                
+                // 限制日志数量
+                while (debugLog.children.length > 50) {
+                    debugLog.removeChild(debugLog.lastChild);
+                }
+            }
+        }
+
+        // ========== 初始化 ==========
+        function init() {
+            debug('初始化应用...');
+            
+            // 加载持久化数据
+            state.userId = getUserId();
+            state.messages = loadMessages();
+            state.selectedAgent = loadSelectedAgent();
+            
+            debug('用户ID', state.userId);
+            debug('消息数量', state.messages.length);
+            debug('选中Agent', state.selectedAgent);
+            
+            // 初始化事件监听
+            initEventListeners();
+            
+            // 连接服务器
+            connectWebSocket();
+            fetchAgents();
+            
+            // 定时任务
+            setInterval(updateTime, 1000);
+            updateTime();
+            
+            setInterval(() => {
+                fetchAgents();
+                renderTasks();
+            }, 5000);
+            
+            // 初始渲染
+            renderTasks();
+            
+            debug('初始化完成');
+        }
+
+        // ========== 事件监听（改进版：事件委托） ==========
+        function initEventListeners() {
+            debug('初始化事件监听...');
+            
+            // Agent 列表点击（事件委托）
+            document.getElementById('agent-list').addEventListener('click', handleAgentListClick);
+            
+            // 快速操作按钮（事件委托）
+            document.getElementById('workspace-content').addEventListener('click', handleWorkspaceClick);
+            
+            // 聊天面板按钮
+            document.getElementById('export-btn').addEventListener('click', exportMessages);
+            document.getElementById('clear-btn').addEventListener('click', clearMessages);
+            document.getElementById('debug-btn').addEventListener('click', toggleDebugPanel);
+            
+            // 消息输入
+            document.getElementById('message-input')?.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+            
+            debug('事件监听初始化完成');
+        }
+
+        // ========== Agent 列表点击处理 ==========
+        function handleAgentListClick(event) {
+            debug('Agent列表点击', event.target);
+            
+            // 查找最近的 agent-item 父元素
+            const agentItem = event.target.closest('.agent-item');
+            if (!agentItem) {
+                debug('未找到 agent-item');
+                return;
+            }
+            
+            const agentId = agentItem.dataset.agentId;
+            if (!agentId) {
+                debug('未找到 agentId');
+                return;
+            }
+            
+            // 防抖检查
+            const now = Date.now();
+            if (now - state.lastClickTime < state.clickDebounceMs) {
+                debug('点击过快，忽略');
+                return;
+            }
+            state.lastClickTime = now;
+            
+            // 视觉反馈
+            agentItem.classList.add('clicking');
+            setTimeout(() => agentItem.classList.remove('clicking'), 100);
+            
+            debug('选择Agent', agentId);
+            selectAgent(agentId);
+        }
+
+        // ========== 工作区点击处理 ==========
+        function handleWorkspaceClick(event) {
+            const target = event.target;
+            
+            // 快速操作按钮
+            if (target.classList.contains('action-btn')) {
+                const action = target.dataset.action;
+                if (!action) return;
+                
+                debug('快速操作', action);
+                
+                switch (action) {
+                    case 'assign':
+                        sendQuickMessage('请帮我分析一下这个需求');
+                        break;
+                    case 'progress':
+                        sendQuickMessage('请汇报当前进度');
+                        break;
+                    case 'suggest':
+                        sendQuickMessage('请提供设计建议');
+                        break;
+                    case 'export':
+                        exportMessages();
+                        break;
+                    case 'clear':
+                        clearMessages();
+                        break;
+                }
+            }
+        }
+
+        // ========== 选择 Agent（改进版） ==========
+        function selectAgent(agentId) {
+            if (state.selectedAgent === agentId) {
+                debug('Agent已选中，跳过');
+                return;
+            }
+            
+            state.selectedAgent = agentId;
+            saveSelectedAgent(agentId);
+            
+            debug('Agent已选择', agentId);
+            
+            // 渲染
+            requestAnimationFrame(() => {
+                renderAgentList();
+                renderWorkspace();
+            });
+        }
+
+        // ========== 渲染 Agent 列表（改进版） ==========
+        function renderAgentList() {
+            if (state.isRendering) {
+                debug('正在渲染，跳过');
+                return;
+            }
+            
+            state.isRendering = true;
+            debug('渲染Agent列表');
+            
+            const container = document.getElementById('agent-list');
+            if (!container) {
+                debug('未找到 agent-list 容器');
+                state.isRendering = false;
+                return;
+            }
+            
+            const activeCount = state.agents.filter(a => a.status !== 'offline').length;
+            document.getElementById('online-count').textContent = `${activeCount}/${state.agents.length} 在线`;
+            
+            // 使用 data-* 属性而不是 onclick
+            container.innerHTML = state.agents.map(agent => `
+                <div class="agent-item ${state.selectedAgent === agent.id ? 'active' : ''}" 
+                     data-agent-id="${agent.id}">
+                    <div class="agent-avatar">
+                        ${agent.icon}
+                        <div class="status-dot ${agent.status}"></div>
+                    </div>
+                    <div class="agent-info">
+                        <div class="agent-name">${agent.name}</div>
+                        <div class="agent-task">${agent.task || agent.role}</div>
+                    </div>
+                    <div class="agent-status-badge ${agent.status}">
+                        ${agent.status === 'idle' ? '空闲' : agent.status === 'busy' ? '忙碌' : '离线'}
+                    </div>
+                </div>
+            `).join('');
+            
+            state.isRendering = false;
+            debug('Agent列表渲染完成');
+        }
+
+        // ========== 渲染工作区 ==========
+        function renderWorkspace() {
+            debug('渲染工作区');
+            
+            const agent = state.agents.find(a => a.id === state.selectedAgent);
+            if (!agent) {
+                debug('未找到选中Agent');
+                return;
+            }
+            
+            const container = document.getElementById('workspace-content');
+            if (!container) {
+                debug('未找到 workspace-content 容器');
+                return;
+            }
+            
+            const taskProgress = generateTaskProgress(agent);
+            
+            container.innerHTML = `
+                <div class="agent-detail-card">
+                    <div class="agent-detail-header">
+                        <div class="agent-detail-avatar">${agent.icon}</div>
+                        <div class="agent-detail-info">
+                            <h2>${agent.name}</h2>
+                            <p>${agent.role}</p>
+                            <div class="skill-tags">
+                                ${agent.skills.map(s => `<span class="skill-tag">${s}</span>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="topology-section">
+                        <div class="topology-title">
+                            <span>🔗 协作关系</span>
+                        </div>
+                        ${renderTopologySVG(agent)}
+                    </div>
+                    
+                    ${agent.task ? `
+                        <div class="task-progress-section">
+                            <div class="progress-header">
+                                <div class="progress-title">📊 任务进度</div>
+                                <div class="progress-percentage">${taskProgress.overall}%</div>
+                            </div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill" style="width: ${taskProgress.overall}%"></div>
+                            </div>
+                            <div class="task-stages">
+                                ${taskProgress.stages.map(stage => `
+                                    <div class="stage-item ${stage.status}">
+                                        <span class="stage-icon">${stage.icon}</span>
+                                        <span class="stage-name">${stage.name}</span>
+                                        <span class="stage-progress ${stage.status === 'active' ? 'active' : ''}">${stage.progress}%</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="current-task" style="text-align: center; color: #888;">
+                            <h3>当前状态</h3>
+                            <div>${agent.status === 'offline' ? '离线' : '空闲中，等待任务分配'}</div>
+                        </div>
+                    `}
+                    
+                    <div class="interaction-area">
+                        <h3>快速交互</h3>
+                        <div class="quick-actions">
+                            <button class="action-btn" data-action="assign">📋 分配任务</button>
+                            <button class="action-btn" data-action="progress">📊 查看进度</button>
+                            <button class="action-btn" data-action="suggest">💡 征求建议</button>
+                            <button class="action-btn" data-action="export" style="background: #2a4a2a; border-color: #3a5a3a;">💾 导出记录</button>
+                            <button class="action-btn" data-action="clear" style="background: #4a2a2a; border-color: #5a3a3a;">🗑️ 清除记录</button>
+                        </div>
+                        <div class="message-input-area">
+                            <input type="text" class="message-input" id="message-input" 
+                                   placeholder="输入消息...">
+                            <button class="send-btn" onclick="sendMessage()">发送</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.querySelector('.workspace-header h2').textContent = `${agent.name} - ${agent.role}`;
+            
+            debug('工作区渲染完成');
+        }
+
+        // ========== 其他工具函数 ==========
+        function getUserId() {
+            let userId = localStorage.getItem('agent-collab-userid');
+            if (!userId) {
+                userId = 'user_' + Date.now();
+                localStorage.setItem('agent-collab-userid', userId);
+            }
+            return userId;
+        }
+
+        function loadMessages() {
+            try {
+                const saved = localStorage.getItem('agent-collab-messages');
+                return saved ? JSON.parse(saved) : [];
+            } catch (e) {
+                console.error('加载消息失败:', e);
+                return [];
+            }
+        }
+
+        function saveMessages() {
+            try {
+                const toSave = state.messages.slice(-100);
+                localStorage.setItem('agent-collab-messages', JSON.stringify(toSave));
+            } catch (e) {
+                console.error('保存消息失败:', e);
+            }
+        }
+
+        function saveSelectedAgent(agentId) {
+            localStorage.setItem('agent-collab-selected', agentId);
+        }
+
+        function loadSelectedAgent() {
+            return localStorage.getItem('agent-collab-selected');
+        }
+
+        // WebSocket 连接
+        function connectWebSocket() {
+            debug('连接WebSocket...');
+            state.ws = new WebSocket(WS_URL);
+
+            state.ws.onopen = () => {
+                debug('WebSocket已连接');
+                state.connected = true;
+                updateConnectionStatus(true);
+            };
+
+            state.ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+
+            state.ws.onclose = () => {
+                debug('WebSocket已断开');
+                state.connected = false;
+                updateConnectionStatus(false);
+                setTimeout(connectWebSocket, 5000);
+            };
+
+            state.ws.onerror = (error) => {
+                console.error('WebSocket错误:', error);
+                updateConnectionStatus(false);
+            };
+        }
+
+        function handleWebSocketMessage(data) {
+            switch (data.type) {
+                case 'history':
+                    if (data.messages && data.messages.length > 0) {
+                        state.messages = data.messages;
+                        renderMessages();
+                    }
+                    break;
+                case 'agents_update':
+                    state.agents = data.agents.map(a => ({
+                        ...a,
+                        skills: AGENT_SKILLS[a.id] || []
+                    }));
+                    renderAgentList();
+                    break;
+                case 'agent_update':
+                    const agent = state.agents.find(a => a.id === data.agentId);
+                    if (agent) {
+                        agent.status = data.status;
+                        agent.task = data.lastMessage;
+                        renderAgentList();
+                    }
+                    break;
+                case 'message':
+                    const exists = state.messages.find(m => m.id === data.id);
+                    if (!exists) {
+                        state.messages.push(data);
+                        saveMessages();
+                        renderMessages();
+                    }
+                    break;
+                case 'message_sent':
+                    if (data.message) {
+                        const exists = state.messages.find(m => m.id === data.message.id);
+                        if (!exists) {
+                            state.messages.push(data.message);
+                            saveMessages();
+                            renderMessages();
+                        }
+                    }
+                    break;
+                case 'error':
+                    console.error('服务器错误:', data.message);
+                    alert('错误: ' + data.message);
+                    break;
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            const dot = document.getElementById('connection-dot');
+            const status = document.getElementById('connection-status');
+            const syncStatus = document.getElementById('sync-status');
+
+            if (connected) {
+                dot.classList.remove('disconnected');
+                status.textContent = '实时同步中';
+                syncStatus.textContent = '● 已连接';
+                syncStatus.style.color = '#28a745';
+            } else {
+                dot.classList.add('disconnected');
+                status.textContent = '已断开';
+                syncStatus.textContent = '● 离线';
+                syncStatus.style.color = '#ff4444';
+            }
+        }
+
+        async function fetchAgents() {
+            try {
+                const response = await fetch(`${API_BASE}/api/agents`);
+                const data = await response.json();
+                state.agents = data.agents.map(a => ({
+                    ...a,
+                    skills: AGENT_SKILLS[a.id] || []
+                }));
+                renderAgentList();
+            } catch (error) {
+                console.error('获取Agent列表失败:', error);
+                state.agents = [
+                    { id: 'main', name: '小松', icon: '🐿️', status: 'offline', role: '主 Agent', skills: AGENT_SKILLS.main },
+                    { id: 'assistant', name: '管家', icon: '🤵', status: 'offline', role: '日程管理', skills: AGENT_SKILLS.assistant },
+                    { id: 'coder', name: '工程师', icon: '💻', status: 'offline', role: '代码开发', skills: AGENT_SKILLS.coder },
+                    { id: 'architect', name: '架构师', icon: '🏗️', status: 'offline', role: '系统设计', skills: AGENT_SKILLS.architect },
+                    { id: 'researcher', name: '研究员', icon: '🔍', status: 'offline', role: '信息调研', skills: AGENT_SKILLS.researcher },
+                    { id: 'editor', name: '编辑', icon: '✍️', status: 'offline', role: '内容创作', skills: AGENT_SKILLS.editor }
+                ];
+                renderAgentList();
+            }
+        }
+
+        async function sendMessageToAgent(agentId, message) {
+            try {
+                const response = await fetch(`${API_BASE}/api/send`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        agentId,
+                        message,
+                        userId: state.userId
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.error('发送失败:', data.error);
+                    return false;
+                }
+
+                addLocalMessage('你', '👤', message, true);
+                return true;
+            } catch (error) {
+                console.error('发送消息失败:', error);
+                return false;
+            }
+        }
+
+        function addLocalMessage(sender, icon, text, own) {
+            const time = new Date().toLocaleTimeString('zh-CN', { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit' 
+            });
+
+            const message = {
+                id: state.messages.length + 1,
+                sender,
+                icon,
+                text,
+                time,
+                own,
+                timestamp: Date.now()
+            };
+
+            state.messages.push(message);
+            saveMessages();
+            renderMessages();
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('message-input');
+            const text = input.value.trim();
+            if (!text || !state.selectedAgent) return;
+
+            input.value = '';
+            await sendMessageToAgent(state.selectedAgent, text);
+        }
+
+        async function sendQuickMessage(message) {
+            if (!state.selectedAgent) return;
+            const agent = state.agents.find(a => a.id === state.selectedAgent);
+            const fullMessage = `@${agent.name} ${message}`;
+            await sendMessageToAgent(state.selectedAgent, fullMessage);
+        }
+
+        async function clearMessages() {
+            if (!confirm('确定要清除所有聊天记录吗？此操作不可撤销！')) return;
+
+            try {
+                localStorage.removeItem('agent-collab-messages');
+                state.messages = [];
+                renderMessages();
+
+                await fetch(`${API_BASE}/api/messages`, { method: 'DELETE' });
+                alert('聊天记录已清除');
+            } catch (error) {
+                console.error('清除消息失败:', error);
+                alert('清除失败: ' + error.message);
+            }
+        }
+
+        function exportMessages() {
+            if (state.messages.length === 0) {
+                alert('没有消息记录可导出');
+                return;
+            }
+
+            const data = {
+                exportedAt: new Date().toISOString(),
+                totalMessages: state.messages.length,
+                messages: state.messages
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `agent-collab-messages-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            alert(`已导出 ${state.messages.length} 条消息记录`);
+        }
+
+        function renderMessages() {
+            const container = document.getElementById('chat-messages');
+            container.innerHTML = state.messages.map(msg => `
+                <div class="chat-message ${msg.own ? 'own' : ''}">
+                    <div class="chat-message-header">
+                        <div class="chat-message-avatar">${msg.icon}</div>
+                        <span class="chat-message-sender">${msg.sender}</span>
+                        <span class="chat-message-time">${msg.time}</span>
+                    </div>
+                    <div class="chat-message-text">${msg.text}</div>
+                </div>
+            `).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function renderTasks() {
+            const container = document.getElementById('task-list');
+            const activeTasks = state.agents
+                .filter(a => a.task)
+                .map(a => ({
+                    title: a.task,
+                    assignedTo: a.name,
+                    status: a.status,
+                    icon: a.icon
+                }));
+
+            document.getElementById('task-count').textContent = `${activeTasks.length} 个任务`;
+
+            container.innerHTML = activeTasks.length > 0 
+                ? activeTasks.map(task => `
+                    <div class="task-item">
+                        <div class="task-item-title">${task.title}</div>
+                        <div class="task-item-meta">
+                            <span>${task.icon} ${task.assignedTo}</span>
+                        </div>
+                    </div>
+                `).join('')
+                : '<div class="connecting">暂无活跃任务</div>';
+        }
+
+        function updateTime() {
+            document.getElementById('current-time').textContent = 
+                new Date().toLocaleTimeString('zh-CN', { 
+                    hour: '2-digit', 
+                    minute: '2-digit', 
+                    second: '2-digit' 
+                });
+        }
+
+        function toggleDebugPanel() {
+            const panel = document.getElementById('debug-panel');
+            panel.classList.toggle('visible');
+        }
+
+        // Agent 技能映射
+        const AGENT_SKILLS = {
+            main: ['任务分发', '协调沟通', '项目管理'],
+            assistant: ['日程创建', '提醒设置', '会议安排'],
+            coder: ['前端开发', '后端开发', 'Bug修复'],
+            architect: ['架构设计', '技术选型', '性能优化'],
+            researcher: ['市场分析', '技术调研', '数据收集'],
+            editor: ['文案撰写', '文档整理', '报告生成']
+        };
+
+        // 生成任务进度
+        function generateTaskProgress(agent) {
+            if (!agent.task) return { overall: 0, stages: [] };
+            
+            const stageTemplates = {
+                main: [
+                    { name: '需求分析', progress: 100, status: 'completed' },
+                    { name: '任务分解', progress: 80, status: 'active' },
+                    { name: '协调分配', progress: 30, status: 'pending' },
+                    { name: '进度跟踪', progress: 0, status: 'pending' }
+                ],
+                coder: [
+                    { name: '技术评估', progress: 100, status: 'completed' },
+                    { name: '代码开发', progress: 60, status: 'active' },
+                    { name: '单元测试', progress: 0, status: 'pending' },
+                    { name: '代码审查', progress: 0, status: 'pending' }
+                ],
+                architect: [
+                    { name: '需求调研', progress: 100, status: 'completed' },
+                    { name: '架构设计', progress: 70, status: 'active' },
+                    { name: '技术选型', progress: 40, status: 'pending' },
+                    { name: '文档输出', progress: 0, status: 'pending' }
+                ],
+                researcher: [
+                    { name: '信息收集', progress: 100, status: 'completed' },
+                    { name: '数据分析', progress: 50, status: 'active' },
+                    { name: '报告撰写', progress: 0, status: 'pending' }
+                ],
+                editor: [
+                    { name: '素材整理', progress: 100, status: 'completed' },
+                    { name: '内容创作', progress: 70, status: 'active' },
+                    { name: '审核修改', progress: 0, status: 'pending' }
+                ],
+                assistant: [
+                    { name: '日程规划', progress: 100, status: 'completed' },
+                    { name: '提醒设置', progress: 80, status: 'active' },
+                    { name: '执行跟踪', progress: 20, status: 'pending' }
+                ]
+            };
+            
+            const stages = stageTemplates[agent.id] || [
+                { name: '准备阶段', progress: 100, status: 'completed' },
+                { name: '执行阶段', progress: 50, status: 'active' },
+                { name: '完成阶段', progress: 0, status: 'pending' }
+            ];
+            
+            const iconMap = { completed: '✅', active: '🔄', pending: '⏳' };
+            stages.forEach(s => { s.icon = iconMap[s.status]; });
+            
+            const overall = Math.round(stages.reduce((sum, s) => sum + s.progress, 0) / stages.length);
+            return { overall, stages };
+        }
+
+        // 渲染拓扑图
+        function renderTopologySVG(centerAgent) {
+            const collaborations = {
+                main: ['assistant', 'coder', 'architect', 'researcher', 'editor'],
+                coder: ['architect', 'researcher'],
+                architect: ['researcher', 'coder'],
+                researcher: ['editor'],
+                editor: ['main'],
+                assistant: ['main']
+            };
+            
+            const collabs = collaborations[centerAgent.id] || [];
+            const connectedAgents = state.agents.filter(a => collabs.includes(a.id));
+            const centerX = 200, centerY = 100, radius = 70;
+            
+            const nodes = connectedAgents.map((agent, index) => {
+                const angle = (index / connectedAgents.length) * 2 * Math.PI - Math.PI / 2;
+                return {
+                    ...agent,
+                    x: centerX + radius * Math.cos(angle),
+                    y: centerY + radius * Math.sin(angle)
+                };
+            });
+            
+            const links = nodes.map(node => `
+                <line class="topology-link ${node.status === 'busy' ? 'active' : ''}" 
+                      x1="${centerX}" y1="${centerY}" x2="${node.x}" y2="${node.y}"/>
+            `).join('');
+            
+            const nodeElements = nodes.map(node => `
+                <g class="topology-node" data-agent-id="${node.id}">
+                    <circle cx="${node.x}" cy="${node.y}" r="20" 
+                            fill="${node.status === 'offline' ? '#2a2a2a' : '#252525'}" 
+                            stroke="${node.status === 'busy' ? '#667eea' : node.status === 'idle' ? '#28a745' : '#3a3a3a'}" 
+                            stroke-width="2"/>
+                    <text x="${node.x}" y="${node.y - 5}" style="font-size: 12px; fill: #e0e0e0; text-anchor: middle;">${node.icon}</text>
+                    <text x="${node.x}" y="${node.y + 12}" style="font-size: 10px; fill: #888; text-anchor: middle;">${node.name}</text>
+                </g>
+            `).join('');
+            
+            const centerNode = `
+                <g class="topology-node">
+                    <circle cx="${centerX}" cy="${centerY}" r="28" fill="#2a2a4a" stroke="#667eea" stroke-width="3"/>
+                    <text x="${centerX}" y="${centerY - 5}" style="font-size: 16px; fill: #e0e0e0; text-anchor: middle;">${centerAgent.icon}</text>
+                    <text x="${centerX}" y="${centerY + 12}" style="font-size: 10px; fill: #667eea; text-anchor: middle;">${centerAgent.name}</text>
+                </g>
+            `;
+            
+            return `<svg class="topology-svg" viewBox="0 0 400 200">${links}${nodeElements}${centerNode}</svg>`;
+        }
+
+        // 启动应用
+        init();
+    </script>
+</body>
+</html>

@@ -1,6 +1,17 @@
-# 多 Agent 协作 UI
+# 像素办公室 (Pixel Office)
 
-> 实时监控 Agent 状态、沟通记录和任务进度
+> 🏢 AI Agent 团队的可视化协作空间 — 让 AI 的思考过程可见
+
+**English**: A visual workspace for AI agent teams — making AI's thinking process visible.
+
+---
+
+## 🎯 核心价值
+
+**飞书看不到的，这里能看到**：
+- 🖥️ **可视化运行过程** — 从文字交互到视觉交互
+- 👁️ **Agent 内部状态** — 实时监控每个 Agent 的思考、任务、进度
+- 📊 **全局协作视图** — 团队状态一目了然，任务流转清晰可见
 
 ## 🎯 功能特性
 

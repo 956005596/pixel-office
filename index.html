@@ -1750,6 +1750,18 @@
             // 更新统计数据
             updateTaskStats();
             
+            // 空状态检查
+            if (!tasksData || tasksData.length === 0) {
+                taskList.innerHTML = `
+                    <div style="text-align: center; padding: 30px 10px; color: #a0aec0;">
+                        <div style="font-size: 32px; margin-bottom: 10px;">📋</div>
+                        <div style="font-size: 13px; margin-bottom: 5px;">暂无任务</div>
+                        <div style="font-size: 11px; color: #718096;">点击 Agent 分配新任务</div>
+                    </div>
+                `;
+                return;
+            }
+            
             // 按状态分组
             const statusOrder = ['in_progress', 'pending', 'completed'];
             const statusLabels = {
@@ -1919,6 +1931,18 @@
             if (!chatMessages) return;
             
             chatMessages.innerHTML = '';
+            
+            // 空状态检查
+            if (!messagesData || messagesData.length === 0) {
+                chatMessages.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: #a0aec0;">
+                        <div style="font-size: 24px; margin-bottom: 8px;">💬</div>
+                        <div style="font-size: 12px;">暂无消息</div>
+                        <div style="font-size: 10px; color: #718096; margin-top: 4px;">与 Agent 对话后将显示在这里</div>
+                    </div>
+                `;
+                return;
+            }
             
             // 显示最近20条消息
             messagesData.slice(-20).forEach((msg, index) => {

@@ -13,6 +13,33 @@
 - 👁️ **Agent 内部状态** — 实时监控每个 Agent 的思考、任务、进度
 - 📊 **全局协作视图** — 团队状态一目了然，任务流转清晰可见
 
+---
+
+## 🚀 快速开始
+
+### 本地运行
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/956005596/pixel-office.git
+cd pixel-office
+
+# 2. 安装依赖
+cd server
+npm install
+
+# 3. 启动服务
+node server.js
+
+# 4. 打开浏览器
+open http://localhost:3100
+```
+
+### 访问地址
+
+- **本地**: http://localhost:3100
+- **GitHub**: https://github.com/956005596/pixel-office
+
 ## 🎯 功能特性
 
 ### 基础版 (index.html)

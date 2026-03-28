@@ -15,6 +15,56 @@
 
 ---
 
+## 📋 依赖说明
+
+> ⚠️ **重要提示：本项目是 OpenClaw 的配套 UI，不是独立工具**
+
+### 运行依赖
+
+1. **OpenClaw 必须运行**
+   - 需要 OpenClaw Gateway 服务 (默认端口 18789)
+   - 需要配置 OpenClaw Token 进行认证
+   - Agent 必须在 OpenClaw 中已注册
+
+2. **环境变量配置**
+   ```bash
+   # 复制模板文件
+   cp .env.example .env
+   
+   # 编辑 .env 文件，填写：
+   # - OPENCLAW_TOKEN (从 ~/.openclaw/config.json 获取)
+   # - SESSION_KEY_* (各 Agent 的 session key)
+   # - FEISHU_APP_ID/SECRET (如需飞书集成)
+   ```
+
+3. **Node.js 后端（可选，用于实时功能）**
+   ```bash
+   cd server
+   npm install
+   node server.js
+   ```
+
+### 使用前提
+
+- ✅ 已安装并配置 OpenClaw
+- ✅ 已创建至少一个 Agent
+- ✅ 已获取 Agent 的 session key
+- ✅ （可选）已创建飞书应用（用于消息同步）
+
+### 配置说明
+
+详细配置方法请参考 `.env.example` 文件中的注释。
+
+---
+
+## ⚠️ 项目状态
+
+> 本项目目前仅作展示用途，核心功能需要与 OpenClaw 深度集成。
+> 
+> 如有兴趣自行维护，欢迎 fork。不再接受功能更新或 PR。
+
+---
+
 ## 🚀 快速开始
 
 ### 本地运行

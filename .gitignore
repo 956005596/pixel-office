@@ -10,6 +10,7 @@ package-lock.json
 # Data files (runtime generated)
 server/data/
 *.log
+server.log
 
 # Test files (archived)
 tests/
@@ -27,3 +28,39 @@ Thumbs.db
 # Backup files
 *-backup-*.html
 *-backup-*.js
+
+# Development reports (internal tracking, not for GitHub)
+*-REPORT.md
+*-REPORT-*.md
+PROGRESS.md
+PHASE*_COMPLETE*.md
+PHASE2_1*.md
+P*-REPORT*.md
+P1-P2-*.md
+P1-P4-*.md
+P3-*.md
+TASK-*.md
+BUG-*.md
+BLACKBOARD-*.md
+CHAT-BOARD-*.md
+DATA-MAPPING-*.md
+DESIGN-SYSTEM.md
+FIX_REPORT.md
+FLASH_FIX_REPORT.md
+LAYOUT_OPTIMIZATION_REPORT.md
+OPEN-SOURCE-PREP-REPORT.md
+cleanup-editor-tasks.js
+QA_REPORT.md
+ROADMAP.md
+TASKLIST_SCROLL_REPORT.md
+TASK_FILTER_REPORT.md
+UI-OPTIMIZATION-REPORT.md
+UI-REDACTOR-*.md
+VERIFICATION_REPORT.md
+verify-phase2.sh
+test*.html
+index-optimized.html
+index-v2-backup.html
+task-board-display-demo.html
+ws-test.html
+.gstack/
